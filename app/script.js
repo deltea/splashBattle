@@ -23,8 +23,8 @@ class Game extends Phaser.Scene {
     this.load.image("cursor", "assets/cursor.png");
     this.load.image("stickman", "assets/stickman.png");
     this.load.image("dirt", "assets/dirt.png");
-    this.load.image("stickmanWalk0", "assets/stickmanWalking0.png");
-    this.load.image("stickmanWalk1", "assets/stickmanWalking1.png");
+    this.load.image("stickmanWalk0", "assets/walkingStickman0.png");
+    this.load.image("stickmanWalk1", "assets/walkingStickman1.png");
     this.load.image("water", "assets/water.png");
   }
   create() {
@@ -39,8 +39,8 @@ class Game extends Phaser.Scene {
     for (var x = 0; x < this.engine.gameWidth / 3 * game.TILESIZE; x += 3 * game.TILESIZE) {
       let dirt = game.dirt.create(x, this.engine.gameHeight - 8, "dirt");
       dirt.setScale(8);
+      dirt.setCollideWorldBounds(true);
       dirt.setGravityY(-game.GRAVITYY);
-      dirt.setImmovable(true);
     }
 
     // Create stickman
@@ -48,6 +48,7 @@ class Game extends Phaser.Scene {
     game.stickman.setScale(8);
     game.stickman.setDragX(1000);
     game.stickman.setCollideWorldBounds(true);
+    game.stickman.setImmovable(true);
     game.stickman.dir = true;
 
     // Create water
@@ -56,6 +57,8 @@ class Game extends Phaser.Scene {
     // ---------- Colliders! ----------
     this.physics.add.collider(game.stickman, game.dirt);
     this.physics.add.collider(game.water, game.dirt);
+    this.physics.add.collider(game.stickman, game.water);
+    this.physics.add.collider(game.dirt, game.dirt);
 
     // ---------- Animation! ----------
     this.engine.addAnimation("stickmanWalk", 5, false, false, "stickmanWalk0", "stickmanWalk1");
@@ -90,6 +93,7 @@ class Game extends Phaser.Scene {
       water.setScale(8);
       water.setVelocityY(-game.waterYVel);
       water.setCollideWorldBounds(true);
+      water.setBounce(0.5);
       if (game.stickman.dir) {
         water.setVelocityX(game.waterSpeed);
       } else {
