@@ -7,11 +7,12 @@ The main script for Splash Battle.
 let game = {
   TILESIZE: 8,
   GRAVITYY: 1500,
+  WORLDWIDTH: 2000,
   playerSpeed: 400,
   playerJumpHeight: 700,
   waterSpeed: 700,
   waterYVel: 500,
-  WORLDWIDTH: 2000
+  currentGun: "fountain"
 };
 class Game extends Phaser.Scene {
   constructor() {
@@ -53,6 +54,7 @@ class Game extends Phaser.Scene {
     // Create cursor
     this.engine.pixelCursor();
 
+
     // Create keyboard
     game.keyboard = this.input.keyboard.createCursorKeys();
 
@@ -79,7 +81,7 @@ class Game extends Phaser.Scene {
 
     // Create... NEIGHBORS!
     game.neighbors = this.physics.add.group();
-    for (var i = 0; i < 5; i++) {
+    for (var i = 0; i < 10; i++) {
       let neighbor = game.neighbors.create(Math.random() * game.WORLDWIDTH, Math.random() * this.engine.gameHeight, "neighborStickman");
       neighbor.setScale(8);
       neighbor.setCollideWorldBounds(true);
@@ -95,12 +97,12 @@ class Game extends Phaser.Scene {
     this.physics.add.collider(game.stickman, game.dirt);
     this.physics.add.collider(game.dirt, game.dirt);
     this.physics.add.collider(game.neighbors, game.dirt);
+    this.physics.add.collider(game.neighbors, game.water);
     this.physics.add.collider(game.water, game.dirt, (water, dirt) => {
       setTimeout(function () {
         water.destroy();
       }, 2000);
     });
-    this.physics.add.collider(game.neighbors, game.water);
 
     // ---------- Animation! ----------
     this.engine.addAnimation("stickmanWalk", 5, false, false, "stickmanWalk0", "stickmanWalk1");
@@ -154,7 +156,31 @@ class Game extends Phaser.Scene {
 
     // ---------- Shooting water ----------
     if (game.keyboard.space.isDown) {
-      this.shootWater(game.stickman.x, game.stickman.y, game.stickman.dir, game.waterSpeed);
+      if (game.currentGun === "triple-barrel") {
+        this.shootWater(game.stickman.x, game.stickman.y, game.stickman.dir, game.waterSpeed - 100);
+        this.shootWater(game.stickman.x, game.stickman.y, game.stickman.dir, game.waterSpeed);
+        this.shootWater(game.stickman.x, game.stickman.y, game.stickman.dir, game.waterSpeed + 100);
+      } else if (game.currentGun === "make-it-rain") {
+        for (var i = 0; i < 10; i++) {
+          this.shootWater(game.stickman.x, game.stickman.y, game.stickman.dir, game.waterSpeed + i * 20);
+        }
+      } else if (game.currentGun === "power") {
+        this.shootWater(game.stickman.x, game.stickman.y, game.stickman.dir, game.waterSpeed * 2);
+      } else if (game.currentGun === "fountain") {
+        for (var i = 0; i < 5; i++) {
+          let margin = 250;
+          let water = game.water.create(game.stickman.x, game.stickman.y, "water");
+          water.setScale(8);
+          water.setVelocityY(-game.waterYVel);
+          water.setCollideWorldBounds(true);
+          water.setBounce(0.5);
+          water.setDragX(100);
+          water.setVelocityY(-1000);
+          water.setVelocityX(-(2 * margin) + i * margin);
+        }
+      } else {
+        this.shootWater(game.stickman.x, game.stickman.y, game.stickman.dir, game.waterSpeed);
+      }
     }
   }
 }
