@@ -13,7 +13,8 @@ let game = {
   waterSpeed: 700,
   waterYVel: 0,
   waterYVelDir: true,
-  currentGun: "basic"
+  currentGun: "basic",
+  jetpack: true
 };
 class Game extends Phaser.Scene {
   constructor() {
@@ -56,13 +57,18 @@ class Game extends Phaser.Scene {
     this.load.image("neighborsHouse", "assets/neighborsHouse.png");
     this.load.image("stickmanGun", "assets/stickmanGun.png");
     this.load.image("neighborsGun", "assets/neighborsGun.png");
+    this.load.image("tree", "assets/tree.png");
+    this.load.image("jetpackStickman0", "assets/jetpackStickman0.png");
   }
   create() {
     // Create keyboard
     game.keyboard = this.input.keyboard.createCursorKeys();
 
-    // Create houses
+    // Create tree
     let dirtSize = 3 * game.TILESIZE;
+    this.add.image(game.WORLDWIDTH / 2, this.engine.gameHeight - (dirtSize + 288), "tree").setScale(16).setDepth(-1);
+
+    // Create houses
     this.add.image(100, this.engine.gameHeight - dirtSize - 160, "myHouse").setScale(8).setDepth(-1);
     this.add.image(game.WORLDWIDTH - 100, this.engine.gameHeight - dirtSize - 160, "neighborsHouse").setScale(8).setDepth(-1);
 
@@ -77,9 +83,25 @@ class Game extends Phaser.Scene {
     this.createDirt(game.WORLDWIDTH - 800, this.engine.gameHeight - 100);
     this.createDirt(game.WORLDWIDTH - 800 + dirtSize, this.engine.gameHeight - 100);
     this.createDirt(game.WORLDWIDTH - 800 - dirtSize, this.engine.gameHeight - 100);
-    this.createDirt(game.WORLDWIDTH / 2, this.engine.gameHeight / 3 * 2);
-    this.createDirt(game.WORLDWIDTH / 2 - 3 * game.TILESIZE, this.engine.gameHeight / 3 * 2);
-    this.createDirt(game.WORLDWIDTH / 2 + 3 * game.TILESIZE, this.engine.gameHeight / 3 * 2);
+    this.createDirt(1010, 200);
+    this.createDirt(1010 + dirtSize, 200);
+    this.createDirt(1010 + dirtSize * 2, 200);
+    this.createDirt(1000 + dirtSize * 3, 190);
+    this.createDirt(960, 280);
+    this.createDirt(960 - dirtSize, 280);
+    this.createDirt(960 - dirtSize * 2, 270);
+    this.createDirt(game.WORLDWIDTH - 600, this.engine.gameHeight - 200);
+    this.createDirt(game.WORLDWIDTH - 600 + dirtSize, this.engine.gameHeight - 200);
+    this.createDirt(game.WORLDWIDTH - 600 - dirtSize, this.engine.gameHeight - 200);
+    this.createDirt(game.WORLDWIDTH - 800, this.engine.gameHeight - 300);
+    this.createDirt(game.WORLDWIDTH - 800 + dirtSize, this.engine.gameHeight - 300);
+    this.createDirt(game.WORLDWIDTH - 800 - dirtSize, this.engine.gameHeight - 300);
+    this.createDirt(600, this.engine.gameHeight - 200);
+    this.createDirt(600 + dirtSize, this.engine.gameHeight - 200);
+    this.createDirt(600 - dirtSize, this.engine.gameHeight - 200);
+    this.createDirt(800, this.engine.gameHeight - 300);
+    this.createDirt(800 + dirtSize, this.engine.gameHeight - 300);
+    this.createDirt(800 - dirtSize, this.engine.gameHeight - 300);
 
     // Create stickman
     game.stickman = this.physics.add.sprite(game.WORLDWIDTH / 2, this.engine.gameHeightCenter, "stickman");
@@ -102,7 +124,7 @@ class Game extends Phaser.Scene {
       neighbor.setScale(8);
       neighbor.setCollideWorldBounds(true);
       neighbor.dir = true;
-      neighbor.health = 1000;
+      neighbor.health = 100;
     }
 
     // ---------- It's a big world after all! ----------
@@ -114,6 +136,11 @@ class Game extends Phaser.Scene {
     this.physics.add.collider(game.stickman, game.dirt);
     this.physics.add.collider(game.dirt, game.dirt);
     this.physics.add.collider(game.neighbors, game.dirt);
+    this.physics.add.collider(game.water, game.dirt, (water, dirt) => {
+      setTimeout(function () {
+        water.destroy();
+      }, 2000);
+    });
     this.physics.add.overlap(game.neighbors, game.water, (neighbor, water) => {
       if (water.isPlayers) {
         neighbor.health--;
@@ -123,10 +150,10 @@ class Game extends Phaser.Scene {
         water.destroy();
       }
     });
-    this.physics.add.collider(game.water, game.dirt, (water, dirt) => {
-      setTimeout(function () {
+    this.physics.add.overlap(game.stickman, game.water, (stickman, water) => {
+      if (!water.isPlayers) {
         water.destroy();
-      }, 2000);
+      }
     });
 
     // ---------- Animation! ----------
@@ -135,14 +162,14 @@ class Game extends Phaser.Scene {
     // ---------- Move the neighbors! ----------
     this.engine.setPhaserInterval(() => {
       game.neighbors.getChildren().forEach(neighbor => {
-        if (Math.floor(Math.random() * 2) === 1) {
+        if (game.stickman.x >= neighbor.x) {
           neighbor.setVelocityX(this.engine.randomBetween(0, 800));
           neighbor.dir = true;
         } else {
           neighbor.setVelocityX(this.engine.randomBetween(-800, 0));
           neighbor.dir = false;
         }
-        if (neighbor.body.touching.down) {
+        if (game.stickman.y < neighbor.y) {
           neighbor.setVelocityY(this.engine.randomBetween(-1000, 0));
         }
       });
@@ -153,43 +180,58 @@ class Game extends Phaser.Scene {
       game.neighbors.getChildren().forEach(neighbor => {
         this.shootWater(neighbor.x, neighbor.y, neighbor.dir, 500, false);
       });
-    }, 1000);
+    }, 100);
   }
   update() {
-    // ---------- Movement ----------
-    if (!game.keyboard.left.isDown && !game.keyboard.right.isDown && !game.keyboard.up.isDown) {
-      game.stickman.setTexture("stickman");
-    }
-    if (game.keyboard.up.isDown && game.stickman.body.touching.down) {
-      game.stickman.setVelocityY(-game.playerJumpHeight);
-    }
-    if (game.keyboard.right.isDown) {
-      game.stickman.flipX = false;
-      game.stickman.dir = true
-      game.stickman.anims.play("stickmanWalk", true);
-      game.stickman.setVelocityX(game.playerSpeed);
-    }
-    if (game.keyboard.left.isDown) {
+    if (!game.jetpack) {
+      // ---------- Normal Movement ----------
+      if (!game.keyboard.left.isDown && !game.keyboard.right.isDown && !game.keyboard.up.isDown) {
+        game.stickman.setTexture("stickman");
+      }
+      if (game.keyboard.up.isDown && game.stickman.body.touching.down) {
+        game.stickman.setVelocityY(-game.playerJumpHeight);
+      }
+      if (game.keyboard.right.isDown) {
+        game.stickman.flipX = false;
+        game.stickman.dir = true
+        game.stickman.anims.play("stickmanWalk", true);
+        game.stickman.setVelocityX(game.playerSpeed);
+      }
+      if (game.keyboard.left.isDown) {
       game.stickman.flipX = true;
       game.stickman.dir = false;
       game.stickman.anims.play("stickmanWalk", true);
       game.stickman.setVelocityX(-game.playerSpeed);
     }
+    } else {
+      // ---------- Jetpack Time! ----------
+      game.stickman.setGravityY(game.GRAVITYY);
+      game.stickman.setTexture("jetpackStickman0");
+      if (game.keyboard.up.isDown) {
+        this.physics.velocityFromAngle(game.stickman.angle - 90, 500, game.stickman.body.velocity);
+      }
+      if (game.keyboard.left.isDown) {
+        game.stickman.angle -= 3;
+      }
+      if (game.keyboard.right.isDown) {
+        game.stickman.angle += 3;
+      }
+    }
 
     // ---------- Shooting water ----------
     if (game.keyboard.space.isDown) {
       if (game.currentGun === "triple-barrel") {
-        this.shootWater(game.stickman.x, game.stickman.y, game.stickman.dir, game.waterSpeed - 100, true);
-        this.shootWater(game.stickman.x, game.stickman.y, game.stickman.dir, game.waterSpeed, true);
-        this.shootWater(game.stickman.x, game.stickman.y, game.stickman.dir, game.waterSpeed + 100, true);
+        this.shootWater(game.stickman.gun.x, game.stickman.gun.y - 24, game.stickman.dir, game.waterSpeed - 100, true);
+        this.shootWater(game.stickman.gun.x, game.stickman.gun.y - 24, game.stickman.dir, game.waterSpeed, true);
+        this.shootWater(game.stickman.gun.x, game.stickman.gun.y - 24, game.stickman.dir, game.waterSpeed + 100, true);
       } else if (game.currentGun === "make-it-rain") {
         for (var i = 0; i < 10; i++) {
-          this.shootWater(game.stickman.x, game.stickman.y, game.stickman.dir, game.waterSpeed + i * 20, true);
+          this.shootWater(game.stickman.gun.x, game.stickman.gun.y, game.stickman.dir, game.waterSpeed + i * 20, true);
         }
       } else if (game.currentGun === "fountain") {
         for (var i = 0; i < 5; i++) {
           let margin = 250;
-          let water = game.water.create(game.stickman.x, game.stickman.y - 40, "water");
+          let water = game.water.create(game.stickman.gun.x, game.stickman.gun.y - 40, "water");
           water.setScale(8);
           water.setVelocityY(-game.waterYVel);
           water.setCollideWorldBounds(true);
@@ -200,7 +242,7 @@ class Game extends Phaser.Scene {
           water.isPlayers = true;
         }
       } else {
-        this.shootWater(game.stickman.x, game.stickman.y + 8, game.stickman.dir, game.waterSpeed, true);
+        this.shootWater(game.stickman.gun.x, game.stickman.gun.y - 24, game.stickman.dir, game.waterSpeed, true);
       }
     }
 
